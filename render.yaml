@@ -1,5 +1,5 @@
 services:
-  - type: worker
+  - type: web
     name: telegram-pixel-bot
     env: python
     region: oregon
@@ -11,3 +11,19 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ALLOWED_CHAT_ID
+        sync: false
+      - key: OPENWEATHER_API_KEY
+        sync: false
+      - key: CITY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_API_KEY1
+        sync: false
+      - key: GROQ_API_KEY2
+        sync: false
+      - key: GROQ_API_KEY3
+        sync: false
