@@ -1,17 +1,13 @@
 services:
-  - type: web
-    name: telegram-bot
+  - type: worker
+    name: telegram-pixel-bot
     env: python
-    buildCommand: "pip install -r requirements.txt && apt-get update && apt-get install -y ffmpeg"
-    startCommand: "python bot.py"
+    region: oregon
+    plan: free
+    buildCommand: |
+      apt-get update && apt-get install -y ffmpeg
+      pip install -r requirements.txt
+    startCommand: python bot.py
     envVars:
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: TELEGRAM_ALLOWED_CHAT_ID
-        sync: false
-      - key: OPENWEATHER_API_KEY
-        sync: false
-      - key: CITY
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
+      - key: PYTHON_VERSION
+        value: 3.11.0
