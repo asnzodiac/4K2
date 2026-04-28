@@ -17,7 +17,7 @@ import speech_recognition as sr
 # =========================
 
 EDGE_VOICE = "en-GB-RyanNeural"
-WAKE_WORD = "pixel"  # change this if you want
+WAKE_WORD = "hi"  # change this if you want
 STOP_PHRASES = ("stop listening", "standby", "bye")
 MAX_HISTORY_MESSAGES = 20
 
