@@ -268,12 +268,35 @@ def transcribe_telegram_voice(file_id):
 # ALLOWED CHAT
 # =========================
 
-def _allowed_chat(chat_id):
-    allowed = get_env('TELEGRAM_ALLOWED_CHAT_ID')
-    if not allowed:
-        return True
-    return str(chat_id) == str(allowed).strip()
+def _allowed_chat(chat_id, chat_type):
+    """
+    Supports:
+    - Multiple private users
+    - Multiple groups
+    - Everyone inside allowed groups
+    """
 
+    allowed_users = os.environ.get("TELEGRAM_ALLOWED_USERS", "")
+    allowed_groups = os.environ.get("TELEGRAM_ALLOWED_GROUPS", "")
+
+    user_list = [x.strip() for x in allowed_users.split(",") if x.strip()]
+    group_list = [x.strip() for x in allowed_groups.split(",") if x.strip()]
+
+    chat_id_str = str(chat_id)
+
+    # Private chat
+    if chat_type == "private":
+        if not user_list:
+            return True
+        return chat_id_str in user_list
+
+    # Group or supergroup
+    if chat_type in ("group", "supergroup"):
+        if not group_list:
+            return True
+        return chat_id_str in group_list
+
+    return False
 # =========================
 # FLASK WEBHOOK
 # =========================
