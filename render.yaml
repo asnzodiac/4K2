@@ -5,11 +5,13 @@ services:
     region: oregon
     plan: free
     branch: main
+    # Specify Python version explicitly
+    runtime: python
     buildCommand: |
+      python --version
       pip install --upgrade pip
       pip install -r requirements.txt
-      apt-get update && apt-get install -y ffmpeg
-    startCommand: gunicorn bot:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    startCommand: gunicorn bot:app --workers 2 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT --log-level info
     envVars:
       - key: BOT_TOKEN
         sync: false
@@ -25,3 +27,5 @@ services:
       name: tts-cache
       mountPath: /opt/render/project/src/tts_cache
       sizeGB: 1
+
+# System packages (ffmpeg is available by default on Render)
