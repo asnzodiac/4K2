@@ -5,3 +5,6 @@ edge-tts
 speechrecognition
 requests
 colorama
+Pillow          # for image handling
+pypdf2          # for PDF text extraction (optional but useful)
+python-dotenv   # optional, for local testing
