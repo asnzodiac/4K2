@@ -8,11 +8,12 @@ python-dotenv==1.0.0
 groq==0.4.2
 
 # Speech processing
-edge-tts==6.1.9
+edge-tts>=6.1.12
+gTTS==2.5.1
 SpeechRecognition==3.10.1
 pydub==0.25.1
 
-# Media processing - UPDATED FOR PYTHON 3.14 COMPATIBILITY
+# Media processing
 Pillow>=10.3.0
 PyPDF2==3.0.1
 
