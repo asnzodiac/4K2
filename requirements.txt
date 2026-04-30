@@ -12,8 +12,8 @@ edge-tts==6.1.9
 SpeechRecognition==3.10.1
 pydub==0.25.1
 
-# Media processing
-Pillow==10.1.0
+# Media processing - UPDATED FOR PYTHON 3.14 COMPATIBILITY
+Pillow>=10.3.0
 PyPDF2==3.0.1
 
 # Utilities
