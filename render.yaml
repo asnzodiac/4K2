@@ -28,8 +28,6 @@ services:
         value: 733340342
       - key: PORT
         value: 10000
-      - key: PYTHON_VERSION
-        value: 3.11.0
     disk:
       name: tts-cache
       mountPath: /opt/render/project/src/tts_cache
