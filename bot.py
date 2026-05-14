@@ -184,7 +184,7 @@ def should_sleep(text):
 
 
 def should_wake(text):
-    cmds = ["hi", "hello", "wake up", "adimma"]
+    cmds = ["hi", "hello", "wake up", "ponne"]
     return any(c in text.lower() for c in cmds)
 
 
