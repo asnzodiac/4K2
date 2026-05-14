@@ -1,12 +1,11 @@
 """
-Ponnan🤴: Voice-First Telegram Bot
-Upgraded Admin Intelligence Version
+Ponnan 🤴 – Production Stable Version
+Voice‑First Telegram Bot
 """
 
 import asyncio
 import logging
 import os
-import random
 from datetime import datetime
 
 from flask import Flask, request
@@ -26,52 +25,67 @@ from utils.media_processor import MediaProcessor
 from utils.stt_handler import STTHandler
 from utils.tts_handler import TTSHandler
 
-# ============================================================================
+# =============================================================================
 # LOGGING
-# ============================================================================
+# =============================================================================
 
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
+# =============================================================================
+# SAFE ENV CONFIGURATION
+# =============================================================================
 
 BOT_TOKEN = os.getenv("TELEGRAM_TOKEN") or os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 PORT = int(os.getenv("PORT", 10000))
-OWNER_ID = int(os.getenv("OWNER_ID"))
+owner_raw = os.getenv("OWNER_ID")
 
 if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN missing")
-if not OWNER_ID:
-    raise ValueError("OWNER_ID missing")
+    raise ValueError("❌ BOT_TOKEN missing in environment")
 
+if not WEBHOOK_URL:
+    raise ValueError("❌ WEBHOOK_URL missing in environment")
+
+if not owner_raw:
+    raise ValueError("❌ OWNER_ID missing in environment")
+
+try:
+    OWNER_ID = int(owner_raw)
+except ValueError:
+    raise ValueError("❌ OWNER_ID must be an integer")
+
+# =============================================================================
+# GROQ KEYS
+# =============================================================================
 
 def get_groq_keys():
     keys = []
+
     multi = os.getenv("GROQ_API_KEYS", "")
     if multi:
         keys.extend([k.strip() for k in multi.split(",") if k.strip()])
+
     for i in range(4):
         name = f"GROQ_API_KEY{i}" if i > 0 else "GROQ_API_KEY"
-        k = os.getenv(name, "")
+        k = os.getenv(name)
         if k and k not in keys:
             keys.append(k.strip())
+
     return keys
 
 
 GROQ_API_KEYS = get_groq_keys()
 
 if not GROQ_API_KEYS:
-    raise ValueError("At least one GROQ_API_KEY required")
+    raise ValueError("❌ At least one GROQ_API_KEY required")
 
-# ============================================================================
+# =============================================================================
 # GLOBALS
-# ============================================================================
+# =============================================================================
 
 app = Flask(__name__)
 
@@ -81,20 +95,20 @@ stt_handler = STTHandler()
 media_processor = MediaProcessor()
 conversation_manager = ConversationManager()
 
-bot_state = {}        # chat_id → {"active": bool, "language": str}
-user_profiles = {}    # user_id → metadata
+bot_state = {}
+user_profiles = {}
 
-# ============================================================================
-# CHARACTER SYSTEM (Dynamic Reload)
-# ============================================================================
+# =============================================================================
+# CHARACTER PROMPT
+# =============================================================================
 
 def load_character_prompt():
     try:
         with open("character.txt", "r", encoding="utf-8") as f:
             return f.read().strip()
     except Exception as e:
-        logger.error(f"Character load failed: {e}")
-        return "You are Adimma Kann, a witty AI assistant."
+        logger.warning(f"Character load failed: {e}")
+        return "You are Ponnan 🤴, emotionally intelligent companion."
 
 
 def build_system_prompt(language="en"):
@@ -108,10 +122,9 @@ def build_system_prompt(language="en"):
 
     return f"{character}\n\nIMPORTANT: {instruction}"
 
-
-# ============================================================================
-# GROQ CLIENT
-# ============================================================================
+# =============================================================================
+# GROQ CLIENT MANAGER
+# =============================================================================
 
 class GroqClientManager:
     def __init__(self, keys):
@@ -127,22 +140,21 @@ class GroqClientManager:
         try:
             client = self.get_client()
             resp = client.chat.completions.create(
-                messages=messages,
                 model="llama-3.3-70b-versatile",
+                messages=messages,
                 temperature=0.8,
                 max_tokens=1024,
             )
             return resp.choices[0].message.content
         except Exception as e:
             logger.error(f"Groq error: {e}")
-            return "Sorry sir, my brain lagged a bit."
-
+            return "Sorry sir… slight brain lag. Try again?"
 
 groq_manager = GroqClientManager(GROQ_API_KEYS)
 
-# ============================================================================
-# ADMIN MONITORING
-# ============================================================================
+# =============================================================================
+# ADMIN FORWARDING
+# =============================================================================
 
 async def forward_to_admin(context, user, user_text, bot_reply):
     if user.id == OWNER_ID:
@@ -150,98 +162,48 @@ async def forward_to_admin(context, user, user_text, bot_reply):
 
     try:
         report = (
-            f"📩 *User Message*\n\n"
+            f"📩 User Message\n\n"
             f"👤 {user.first_name} {user.last_name or ''}\n"
-            f"🆔 `{user.id}`\n"
+            f"🆔 {user.id}\n"
             f"📱 @{user.username or 'N/A'}\n\n"
             f"💬 {user_text}\n\n"
-            f"🤖 *Bot Reply:*\n{bot_reply}"
+            f"🤖 Bot Reply:\n{bot_reply}"
         )
 
-        await context.bot.send_message(
-            chat_id=OWNER_ID,
-            text=report,
-            parse_mode="Markdown",
-        )
+        await context.bot.send_message(chat_id=OWNER_ID, text=report)
 
     except Exception as e:
         logger.error(f"Admin forward error: {e}")
 
-
-# ============================================================================
+# =============================================================================
 # STATE HELPERS
-# ============================================================================
+# =============================================================================
 
 def get_bot_state(chat_id):
     if chat_id not in bot_state:
         bot_state[chat_id] = {"active": True, "language": "en"}
     return bot_state[chat_id]
 
-
 def should_sleep(text):
-    cmds = ["bye", "sleep", "standby", "good night"]
-    return any(c in text.lower() for c in cmds)
-
+    return any(c in text.lower() for c in ["bye", "sleep", "standby", "good night"])
 
 def should_wake(text):
-    cmds = ["hi", "hello", "wake up", "ponne"]
-    return any(c in text.lower() for c in cmds)
+    return any(c in text.lower() for c in ["hi", "hello", "wake up", "ponne"])
 
-
-# ============================================================================
+# =============================================================================
 # COMMANDS
-# ============================================================================
+# =============================================================================
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🎭 Adimma Kann activated, sir.")
-
+    await update.message.reply_text("🎭 Ponnan activated, sir.")
 
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversation_manager.clear_history(update.effective_chat.id)
     await update.message.reply_text("🗑️ History cleared, sir.")
 
-
-async def userinfo_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != OWNER_ID:
-        return
-
-    if not context.args:
-        await update.message.reply_text("Usage: /userinfo <user_id>")
-        return
-
-    try:
-        uid = int(context.args[0])
-    except:
-        await update.message.reply_text("Invalid ID.")
-        return
-
-    if uid not in user_profiles:
-        await update.message.reply_text("No data on this user.")
-        return
-
-    history = conversation_manager.get_history(uid)
-
-    summary_prompt = [
-        {"role": "system", "content": "Summarize this user briefly based on chat history."},
-        {"role": "user", "content": str(history)},
-    ]
-
-    summary = groq_manager.get_completion(summary_prompt)
-    profile = user_profiles[uid]
-
-    report = (
-        f"👤 Name: {profile['name']}\n"
-        f"Username: @{profile['username']}\n"
-        f"First Seen: {profile['first_seen']}\n\n"
-        f"🧠 Summary:\n{summary}"
-    )
-
-    await update.message.reply_text(report)
-
-
-# ============================================================================
+# =============================================================================
 # MESSAGE HANDLER
-# ============================================================================
+# =============================================================================
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -249,7 +211,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     state = get_bot_state(chat_id)
 
-    # Save profile
+    # Save user profile
     if user.id not in user_profiles:
         user_profiles[user.id] = {
             "name": f"{user.first_name} {user.last_name or ''}",
@@ -294,13 +256,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(voice_file, "rb") as audio:
             await update.message.reply_voice(voice=audio)
 
-    # Forward to admin
     await forward_to_admin(context, user, text, response)
 
-
-# ============================================================================
-# WEBHOOK
-# ============================================================================
+# =============================================================================
+# WEBHOOK SETUP
+# =============================================================================
 
 _loop = asyncio.new_event_loop()
 asyncio.set_event_loop(_loop)
@@ -309,14 +269,11 @@ application = Application.builder().token(BOT_TOKEN).build()
 
 application.add_handler(CommandHandler("start", start_command))
 application.add_handler(CommandHandler("clear", clear_command))
-application.add_handler(CommandHandler("userinfo", userinfo_command))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
 
 @app.route("/")
 def index():
-    return "Bot alive", 200
-
+    return "✅ Bot running", 200
 
 @app.route(f"/{BOT_TOKEN}", methods=["POST"])
 def webhook():
@@ -329,10 +286,9 @@ def webhook():
         logger.error(f"Webhook error: {e}")
         return "Error", 500
 
-
-# ============================================================================
-# START
-# ============================================================================
+# =============================================================================
+# STARTUP
+# =============================================================================
 
 def setup_webhook():
     async def _setup():
@@ -340,7 +296,7 @@ def setup_webhook():
         await application.bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
     _loop.run_until_complete(_setup())
 
-
 if __name__ == "__main__":
+    logger.info("🚀 Starting Ponnan...")
     setup_webhook()
     app.run(host="0.0.0.0", port=PORT)
