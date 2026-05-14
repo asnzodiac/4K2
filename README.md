@@ -1,9 +1,9 @@
-# Adimma-Kann 🤖
+# Ponnan 🤴
 
-A witty, sarcastic voice-first Telegram bot powered by Groq (Llama-3.3-70B) that speaks with Microsoft Edge TTS.  
+ voice-first Telegram bot powered by Groq (Llama-3.3-70B) that speaks with Microsoft Edge TTS.  
 Supports **English + Malayalam** (voice & text), images, and documents.
 
-**"Adimma Kann"** — Your sharp, entertaining personal assistant who calls you "sir".
+**"Ponnan"** — Your sharp, entertaining personal assistant who calls you "sir".
 
 ## Features
 
